@@ -10,8 +10,7 @@ use rowan::TextRange;
 use smol_str::SmolStr;
 
 use crate::{
-    AsyncState, DbIndex, InFiled, SemanticModel,
-    db_index::{LuaMemberKey, LuaSignatureId, r#type::type_visit_trait::TypeVisitTrait},
+    db_index::{r#type::type_visit_trait::TypeVisitTrait, LuaMemberKey, LuaSignatureId}, AsyncState, DbIndex, FileId, InFiled, SemanticModel
 };
 
 use super::{TypeOps, type_decl::LuaTypeDeclId};
@@ -62,6 +61,7 @@ pub enum LuaType {
     TypeGuard(Arc<LuaType>),
     ConstTplRef(Arc<GenericTpl>),
     Language(ArcIntern<SmolStr>),
+    FileEnv(FileId),
 }
 
 impl PartialEq for LuaType {
@@ -111,6 +111,7 @@ impl PartialEq for LuaType {
             (LuaType::Never, LuaType::Never) => true,
             (LuaType::ConstTplRef(a), LuaType::ConstTplRef(b)) => a == b,
             (LuaType::Language(a), LuaType::Language(b)) => a == b,
+            (LuaType::FileEnv(a), LuaType::FileEnv(b)) => a == b,
             _ => false, // 不同变体之间不相等
         }
     }
@@ -189,6 +190,7 @@ impl Hash for LuaType {
             LuaType::Never => 45.hash(state),
             LuaType::ConstTplRef(a) => (46, a).hash(state),
             LuaType::Language(a) => (47, a).hash(state),
+            LuaType::FileEnv(a) => (48, a).hash(state),
         }
     }
 }

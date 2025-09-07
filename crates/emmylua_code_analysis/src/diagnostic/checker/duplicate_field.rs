@@ -14,7 +14,7 @@ use super::{Checker, DiagnosticContext};
 pub struct DuplicateFieldChecker;
 
 impl Checker for DuplicateFieldChecker {
-    const CODES: &[DiagnosticCode] = &[
+    const CODES: &'static [DiagnosticCode] = &[
         DiagnosticCode::DuplicateDocField,
         DiagnosticCode::DuplicateSetField,
     ];
@@ -88,7 +88,9 @@ fn is_require_decl(decl: &LuaDecl) -> bool {
     let Some(expr_id) = decl.get_value_syntax_id() else {
         return false;
     };
-    expr_id.get_kind() == LuaSyntaxKind::RequireCallExpr
+
+    let syntax_kind =expr_id.get_kind();
+    syntax_kind == LuaSyntaxKind::RequireCallExpr || syntax_kind == LuaSyntaxKind::KgRequireCallExpr
 }
 
 struct DiagnosticMemberInfo<'a> {

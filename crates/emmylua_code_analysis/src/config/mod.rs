@@ -14,7 +14,7 @@ use configs::{
     EmmyrcCodeAction, EmmyrcCodeLens, EmmyrcCompletion, EmmyrcDiagnostic, EmmyrcDoc,
     EmmyrcDocumentColor, EmmyrcHover, EmmyrcInlayHint, EmmyrcInlineValues, EmmyrcReference,
     EmmyrcResource, EmmyrcRuntime, EmmyrcSemanticToken, EmmyrcSignature, EmmyrcStrict,
-    EmmyrcWorkspace,
+    EmmyrcWorkspace, KgCustom,
 };
 use emmylua_parser::{LuaLanguageLevel, LuaNonStdSymbolSet, ParserConfig, SpecialFunction};
 use regex::Regex;
@@ -62,6 +62,8 @@ pub struct Emmyrc {
     pub doc: EmmyrcDoc,
     #[serde(default)]
     pub format: EmmyrcReformat,
+    #[serde(default)]
+    pub kg_custom: KgCustom,
 }
 
 impl Emmyrc {

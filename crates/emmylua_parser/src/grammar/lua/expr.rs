@@ -372,7 +372,10 @@ fn parse_name_or_special_function(p: &mut LuaParser) -> ParseResult {
         SpecialFunction::Assert => LuaSyntaxKind::AssertCallExpr,
         SpecialFunction::Error => LuaSyntaxKind::ErrorCallExpr,
         SpecialFunction::Type => LuaSyntaxKind::TypeCallExpr,
-        SpecialFunction::Setmetaatable => LuaSyntaxKind::SetmetatableCallExpr,
+        SpecialFunction::Setmetatable => LuaSyntaxKind::SetmetatableCallExpr,
+        SpecialFunction::KgRequire => LuaSyntaxKind::KgRequireCallExpr,
+        SpecialFunction::DefineClass |  SpecialFunction::DefineComponent => LuaSyntaxKind::DefineClassCallExpr,
+        SpecialFunction::DefineEntity => LuaSyntaxKind::DefineEntityCallExpr,
         _ => LuaSyntaxKind::None,
     };
     p.bump();

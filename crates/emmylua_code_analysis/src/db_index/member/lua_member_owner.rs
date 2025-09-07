@@ -2,7 +2,7 @@ use internment::ArcIntern;
 use rowan::TextRange;
 use smol_str::SmolStr;
 
-use crate::{GlobalId, InFiled, LuaTypeDeclId};
+use crate::{FileId, GlobalId, InFiled, LuaTypeDeclId};
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum LuaMemberOwner {
@@ -10,6 +10,7 @@ pub enum LuaMemberOwner {
     Type(LuaTypeDeclId),
     Element(InFiled<TextRange>),
     GlobalPath(GlobalId),
+    FileEnv(FileId),
 }
 
 impl From<LuaTypeDeclId> for LuaMemberOwner {

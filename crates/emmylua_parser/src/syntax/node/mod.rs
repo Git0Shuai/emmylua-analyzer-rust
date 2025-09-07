@@ -231,6 +231,9 @@ impl LuaAstNode for LuaAst {
             | LuaSyntaxKind::ErrorCallExpr
             | LuaSyntaxKind::RequireCallExpr
             | LuaSyntaxKind::TypeCallExpr
+            | LuaSyntaxKind::KgRequireCallExpr
+            | LuaSyntaxKind::DefineClassCallExpr
+            | LuaSyntaxKind::DefineEntityCallExpr
             | LuaSyntaxKind::SetmetatableCallExpr => true,
             LuaSyntaxKind::LiteralExpr => true,
             LuaSyntaxKind::ClosureExpr => true,
@@ -333,6 +336,9 @@ impl LuaAstNode for LuaAst {
             | LuaSyntaxKind::ErrorCallExpr
             | LuaSyntaxKind::RequireCallExpr
             | LuaSyntaxKind::TypeCallExpr
+            | LuaSyntaxKind::KgRequireCallExpr
+            | LuaSyntaxKind::DefineClassCallExpr
+            | LuaSyntaxKind::DefineEntityCallExpr
             | LuaSyntaxKind::SetmetatableCallExpr => {
                 LuaCallExpr::cast(syntax).map(LuaAst::LuaCallExpr)
             }

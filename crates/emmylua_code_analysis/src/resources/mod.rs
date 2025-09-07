@@ -110,7 +110,7 @@ fn load_resource_from_file_system(resources_dir: &Path) -> Option<Vec<LuaFileInf
 
     let std_dir = resources_dir.join("std");
     let match_pattern = vec!["**/*.lua".to_string()];
-    let files = match load_workspace_files(&std_dir, &match_pattern, &Vec::new(), &Vec::new(), None)
+    let files = match load_workspace_files(&std_dir, &match_pattern, &Vec::new(), &Vec::new(), &Vec::new(), None)
     {
         Ok(files) => files,
         Err(e) => {

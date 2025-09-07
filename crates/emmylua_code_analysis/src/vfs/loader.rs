@@ -1,4 +1,5 @@
 use encoding_rs::{Encoding, UTF_8};
+use itertools::Itertools;
 use std::{
     error::Error,
     fs,
@@ -26,6 +27,7 @@ pub fn load_workspace_files(
     include_pattern: &Vec<String>,
     exclude_pattern: &Vec<String>,
     exclude_dir: &Vec<PathBuf>,
+    force_include_globs: &Vec<String>,
     encoding: Option<&str>,
 ) -> Result<Vec<LuaFileInfo>, Box<dyn Error>> {
     let encoding = encoding.unwrap_or("utf-8");
@@ -55,16 +57,16 @@ pub fn load_workspace_files(
         }
     };
 
-    for entry in WalkDir::new(root)
-        .into_iter()
-        .filter_entry(|e| !exclude_dir.iter().any(|dir| e.path().starts_with(dir)))
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
+    let force_include = wax::any(force_include_globs.iter().map(String::as_str)).unwrap();
+    for entry in WalkDir::new(root).into_iter().filter_ok(|e| e.file_type().is_file()).flatten()
     {
         let path = entry.path();
         let relative_path = path.strip_prefix(root).unwrap();
-        if exclude_set.is_match(relative_path) {
-            continue;
+        if exclude_set.is_match(relative_path) || exclude_dir.iter().any(|it| path.starts_with(it)) {
+            if !force_include.is_match(relative_path.to_str().unwrap())
+            {
+                continue;
+            }
         }
 
         if include_set.is_match(relative_path) {

@@ -12,7 +12,7 @@ impl Checker for RequireModuleVisibilityChecker {
     fn check(context: &mut DiagnosticContext, semantic_model: &SemanticModel) {
         let root = semantic_model.get_root().clone();
         for call_expr in root.descendants::<LuaCallExpr>() {
-            if call_expr.is_require() {
+            if call_expr.is_require() || call_expr.is_kg_require() {
                 check_require_call_expr(context, semantic_model, call_expr);
             }
         }

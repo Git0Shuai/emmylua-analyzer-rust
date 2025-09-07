@@ -399,6 +399,9 @@ fn parse_assign_or_expr_or_global_stat(p: &mut LuaParser) -> ParseResult {
             | LuaSyntaxKind::RequireCallExpr
             | LuaSyntaxKind::TypeCallExpr
             | LuaSyntaxKind::SetmetatableCallExpr
+            | LuaSyntaxKind::KgRequireCallExpr
+            | LuaSyntaxKind::DefineClassCallExpr
+            | LuaSyntaxKind::DefineEntityCallExpr
     ) {
         m.set_kind(p, LuaSyntaxKind::CallExprStat);
         if_token_bump(p, LuaTokenKind::TkSemicolon);

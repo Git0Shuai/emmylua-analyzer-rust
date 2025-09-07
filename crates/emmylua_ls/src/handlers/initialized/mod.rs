@@ -92,9 +92,9 @@ pub async fn initialized_handler(
     {
         let mut workspace_manager = context.workspace_manager().write().await;
         workspace_manager.client_config = client_config.clone();
-        let (include, exclude, exclude_dir) = calculate_include_and_exclude(&emmyrc);
+        let (include, exclude, exclude_dir, force_include_globs) = calculate_include_and_exclude(&emmyrc);
         workspace_manager.match_file_pattern =
-            WorkspaceFileMatcher::new(include, exclude, exclude_dir);
+            WorkspaceFileMatcher::new(include, exclude, exclude_dir, force_include_globs);
         workspace_manager.set_workspace_initialized();
         log::info!("workspace manager initialized");
     }
@@ -219,10 +219,13 @@ pub async fn init_std_lib(
         "initializing std lib with resources path: {:?}",
         cmd_args.resources_path
     );
+    let mut std_rc = (*emmyrc).clone();
+    std_rc.kg_custom.default_kg_require = false;
+    let std_rc = Arc::new(std_rc);
     let mut analysis = analysis.write().await;
     if cmd_args.load_stdlib.0 {
         // double update config
-        analysis.update_config(emmyrc);
+        analysis.update_config(std_rc);
         analysis.init_std_lib(cmd_args.resources_path.0.clone());
     }
 

@@ -11,6 +11,8 @@ pub struct EmmyrcWorkspace {
     #[serde(default)]
     pub ignore_globs: Vec<String>,
     #[serde(default)]
+    pub force_include_path_globs: Vec<String>,
+    #[serde(default)]
     /// Library paths. eg: "/usr/local/share/lua/5.1"
     pub library: Vec<String>,
     #[serde(default)]
@@ -29,6 +31,10 @@ pub struct EmmyrcWorkspace {
     /// }
     #[serde(default)]
     pub module_map: Vec<EmmyrcWorkspaceModuleMap>,
+    /// `path/to/shared` is workspace root.
+    /// use `require("shared.utils")`(instead of `require("utils")`) to require file `path/to/shared/utils.lua`
+    #[serde(default)]
+    pub workspace_prefix_map: Vec<EmmyrcWorkspaceModulePrefixMap>,
     /// Delay between changing a file and full project reindex, in milliseconds.
     #[serde(default = "reindex_duration_default")]
     #[schemars(extend("x-vscode-setting" = true))]
@@ -44,11 +50,13 @@ impl Default for EmmyrcWorkspace {
         Self {
             ignore_dir: Vec::new(),
             ignore_globs: Vec::new(),
+            force_include_path_globs: Vec::new(),
             library: Vec::new(),
             workspace_roots: Vec::new(),
             preload_file_size: 0,
             encoding: encoding_default(),
             module_map: Vec::new(),
+            workspace_prefix_map: Vec::new(),
             reindex_duration: 5000,
             enable_reindex: false,
         }
@@ -59,6 +67,12 @@ impl Default for EmmyrcWorkspace {
 pub struct EmmyrcWorkspaceModuleMap {
     pub pattern: String,
     pub replace: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, JsonSchema, Clone)]
+pub struct EmmyrcWorkspaceModulePrefixMap {
+    pub path: String,
+    pub prefix: String,
 }
 
 fn encoding_default() -> String {

@@ -9,12 +9,14 @@ mod type_ref_tags;
 
 use super::AnalyzeContext;
 use crate::{
-    FileId, LuaSemanticDeclId,
+    FileId, LuaSemanticDeclId, LuaType,
     compilation::analyzer::AnalysisPipeline,
     db_index::{DbIndex, LuaTypeDeclId},
     profile::Profile,
 };
-use emmylua_parser::{LuaAstNode, LuaComment, LuaSyntaxNode};
+use emmylua_parser::{
+    LuaAstNode, LuaCallExpr, LuaComment, LuaExpr, LuaLiteralToken, LuaSyntaxNode,
+};
 use file_generic_index::FileGenericIndex;
 use tags::get_owner_id;
 
@@ -27,16 +29,22 @@ impl AnalysisPipeline for DocAnalysisPipeline {
         for in_filed_tree in tree_list.iter() {
             let root = &in_filed_tree.value;
             let mut generic_index = FileGenericIndex::new();
-            for comment in root.descendants::<LuaComment>() {
-                let mut analyzer = DocAnalyzer::new(
-                    db,
-                    in_filed_tree.file_id,
-                    &mut generic_index,
-                    comment,
-                    root.syntax().clone(),
-                    context,
-                );
-                analyze_comment(&mut analyzer);
+            for node in root.syntax().descendants() {
+                if let Some(comment) = LuaComment::cast(node.clone()) {
+                    let mut analyzer = DocAnalyzer::new(
+                        db,
+                        in_filed_tree.file_id,
+                        &mut generic_index,
+                        comment,
+                        root.syntax().clone(),
+                        context,
+                    );
+                    analyze_comment(&mut analyzer);
+                } else if let Some(call_expr) = LuaCallExpr::cast(node) {
+                    if call_expr.is_define_class() || call_expr.is_define_entity() {
+                        analyze_call_define_class_expr(db, in_filed_tree.file_id, call_expr);
+                    }
+                }
             }
         }
     }
@@ -48,18 +56,103 @@ fn analyze_comment(analyzer: &mut DocAnalyzer) -> Option<()> {
         tags::analyze_tag(analyzer, tag);
     }
 
-    let owenr = get_owner_id(analyzer)?;
+    let owner = get_owner_id(analyzer)?;
     let comment_description = preprocess_description(
         &comment.get_description()?.get_description_text(),
-        Some(&owenr),
+        Some(&owner),
     );
     analyzer.db.get_property_index_mut().add_description(
         analyzer.file_id,
-        owenr,
+        owner,
         comment_description,
     );
 
     Some(())
+}
+
+fn analyze_call_define_class_expr(db: &mut DbIndex, file_id: FileId, expr: LuaCallExpr) {
+    let Some(args) = expr.get_args_list() else {
+        return;
+    };
+    let mut args_iter = args.get_args();
+    let Some(LuaExpr::LiteralExpr(literal_expr)) = args_iter.next() else {
+        return;
+    };
+    let Some(LuaLiteralToken::String(string_token)) = literal_expr.get_literal() else {
+        return;
+    };
+
+    let class_name = string_token.get_value();
+    let mut add_super = |expr| {
+        match expr {
+            LuaExpr::NameExpr(lua_name_expr) => lua_name_expr.get_name_text(),
+            LuaExpr::IndexExpr(lua_index_expr) => lua_index_expr
+                .get_index_name_token()
+                .map(|it| it.text().to_owned()),
+            _ => None,
+        }
+        .map(|it| {
+            let super_type_decl_id = LuaTypeDeclId::new(&it);
+            if db
+                .get_type_index()
+                .get_type_decl(&super_type_decl_id)
+                .is_some()
+            {
+                db.get_type_index_mut().add_super_type(
+                    LuaTypeDeclId::new(&class_name),
+                    file_id,
+                    LuaType::Ref(super_type_decl_id),
+                );
+            }
+        });
+    };
+    if expr.is_define_class() {
+        while let Some(expr) = args_iter.next() {
+            add_super(expr);
+        }
+    } else if expr.is_define_entity() {
+        let Some(expr) = args_iter.next() else {
+            return;
+        };
+        if let LuaExpr::TableExpr(super_table_expr) = expr {
+            for super_expr in super_table_expr
+                .get_fields()
+                .flat_map(|it| it.get_value_expr())
+            {
+                add_super(super_expr)
+            }
+        }
+        let Some(expr) = args_iter.next() else {
+            return;
+        };
+        if let LuaExpr::TableExpr(components_table_expr) = expr {
+            for component_expr in components_table_expr
+                .get_fields()
+                .flat_map(|it| it.get_value_expr())
+            {
+                match component_expr {
+                    LuaExpr::NameExpr(lua_name_expr) => lua_name_expr.get_name_text(),
+                    LuaExpr::IndexExpr(lua_index_expr) => lua_index_expr
+                        .get_index_name_token()
+                        .map(|it| it.text().to_owned()),
+                    _ => None,
+                }
+                .map(|it| {
+                    let component_type_decl_id = LuaTypeDeclId::new(&it);
+                    if db
+                        .get_type_index()
+                        .get_type_decl(&component_type_decl_id)
+                        .is_some()
+                    {
+                        db.get_type_index_mut().add_component_type(
+                            LuaTypeDeclId::new(&class_name),
+                            component_type_decl_id,
+                        );
+                    }
+                });
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

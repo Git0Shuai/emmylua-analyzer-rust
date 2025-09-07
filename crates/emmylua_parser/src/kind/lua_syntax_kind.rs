@@ -47,6 +47,10 @@ pub enum LuaSyntaxKind {
     SetmetatableCallExpr, // setmetatable(a, b)
     IndexExpr,
     NameExpr,
+    // C7 customize
+    KgRequireCallExpr,    // kg_require('a')
+    DefineClassCallExpr,  // DefineClass('a')
+    DefineEntityCallExpr, // DefineEntity('Entity')
 
     // other
     LocalName,

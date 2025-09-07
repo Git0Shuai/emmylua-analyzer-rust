@@ -5,13 +5,13 @@ use log::{debug, info};
 
 pub fn collect_files(workspaces: &Vec<PathBuf>, emmyrc: &Emmyrc) -> Vec<LuaFileInfo> {
     let mut files = Vec::new();
-    let (match_pattern, exclude, exclude_dir) = calculate_include_and_exclude(emmyrc);
+    let (match_pattern, exclude, exclude_dir, force_include_globs) = calculate_include_and_exclude(emmyrc);
 
     let encoding = &emmyrc.workspace.encoding;
 
     info!(
-        "collect_files from: {:?} match_pattern: {:?} exclude: {:?}, exclude_dir: {:?}",
-        workspaces, match_pattern, exclude, exclude_dir
+        "collect_files from: {:?} match_pattern: {:?} exclude: {:?}, exclude_dir: {:?} force_include_prefix: {:?}",
+        workspaces, match_pattern, exclude, exclude_dir, force_include_globs
     );
     for workspace in workspaces {
         let loaded = load_workspace_files(
@@ -19,6 +19,7 @@ pub fn collect_files(workspaces: &Vec<PathBuf>, emmyrc: &Emmyrc) -> Vec<LuaFileI
             &match_pattern,
             &exclude,
             &exclude_dir,
+            &force_include_globs,
             Some(encoding),
         )
         .ok();
@@ -36,7 +37,7 @@ pub fn collect_files(workspaces: &Vec<PathBuf>, emmyrc: &Emmyrc) -> Vec<LuaFileI
     files
 }
 
-pub fn calculate_include_and_exclude(emmyrc: &Emmyrc) -> (Vec<String>, Vec<String>, Vec<PathBuf>) {
+pub fn calculate_include_and_exclude(emmyrc: &Emmyrc) -> (Vec<String>, Vec<String>, Vec<PathBuf>, Vec<String>) {
     let mut include = vec!["**/*.lua".to_string()];
     let mut exclude = Vec::new();
     let mut exclude_dirs = Vec::new();
@@ -59,6 +60,10 @@ pub fn calculate_include_and_exclude(emmyrc: &Emmyrc) -> (Vec<String>, Vec<Strin
         exclude_dirs.push(PathBuf::from(dir));
     }
 
+    let force_include_prefix = emmyrc
+        .workspace
+        .force_include_path_globs.clone();
+
     // remove duplicate
     include.sort();
     include.dedup();
@@ -67,5 +72,5 @@ pub fn calculate_include_and_exclude(emmyrc: &Emmyrc) -> (Vec<String>, Vec<Strin
     exclude.sort();
     exclude.dedup();
 
-    (include, exclude, exclude_dirs)
+    (include, exclude, exclude_dirs, force_include_prefix)
 }

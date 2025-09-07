@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use emmylua_parser::{LuaAstNode, LuaCallExpr, LuaExpr, LuaSyntaxKind};
+use emmylua_parser::{LuaAstNode, LuaCallExpr, LuaExpr, LuaIndexKey, LuaSyntaxKind};
 use rowan::TextRange;
 
 use super::{
@@ -12,7 +12,7 @@ use super::{
     InferFailReason, InferResult,
 };
 use crate::semantic::{
-    generic::instantiate_doc_function, infer::narrow::get_type_at_call_expr_inline_cast,
+    generic::instantiate_doc_function, infer::{infer_call::infer_require::infer_kg_require_call, narrow::get_type_at_call_expr_inline_cast},
 };
 use crate::{
     CacheEntry, DbIndex, InFiled, LuaFunctionType, LuaGenericType, LuaInstanceType,
@@ -620,6 +620,8 @@ pub fn infer_call_expr(
 ) -> InferResult {
     if call_expr.is_require() {
         return infer_require_call(db, cache, call_expr);
+    }else if call_expr.is_kg_require() {
+        return infer_kg_require_call(db, cache, call_expr);
     } else if call_expr.is_setmetatable() {
         return infer_setmetatable_call(db, cache, call_expr);
     }
@@ -627,6 +629,15 @@ pub fn infer_call_expr(
     check_can_infer(db, cache, &call_expr)?;
 
     let prefix_expr = call_expr.get_prefix_expr().ok_or(InferFailReason::None)?;
+    if let LuaExpr::IndexExpr(index_expr) = &prefix_expr {
+        if let Some(LuaIndexKey::Name(token)) = index_expr.get_index_key() && token.get_name_text() == "new" {
+            let index_prefix_ty = infer_expr(db, cache, index_expr.get_prefix_expr().ok_or(InferFailReason::None)?)?;
+            if let LuaType::Def(ty) = index_prefix_ty {
+                return Ok(LuaType::Ref(ty));
+            }
+        }
+    }
+
     let prefix_type = infer_expr(db, cache, prefix_expr)?;
     let ret_type = infer_call_expr_func(
         db,

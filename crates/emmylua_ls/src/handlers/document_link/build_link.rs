@@ -109,5 +109,5 @@ pub fn is_require_path(token: LuaStringToken) -> Option<bool> {
         .get_parent::<LuaCallArgList>()?
         .get_parent::<LuaCallExpr>()?;
 
-    Some(call_expr.is_require())
+    Some(call_expr.is_require() || call_expr.is_kg_require())
 }

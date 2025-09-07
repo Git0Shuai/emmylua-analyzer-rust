@@ -110,7 +110,9 @@ pub fn parse_require_module_info<'a>(
     decl: &LuaDecl,
 ) -> Option<&'a ModuleInfo> {
     let value_syntax_id = decl.get_value_syntax_id()?;
-    if value_syntax_id.get_kind() != LuaSyntaxKind::RequireCallExpr {
+    if value_syntax_id.get_kind() != LuaSyntaxKind::RequireCallExpr
+        && value_syntax_id.get_kind() != LuaSyntaxKind::KgRequireCallExpr
+    {
         return None;
     }
 

@@ -15,6 +15,7 @@ mod semantictoken;
 mod signature;
 mod strict;
 mod workspace;
+mod kg_custom;
 
 pub use code_action::EmmyrcCodeAction;
 pub use codelen::EmmyrcCodeLens;
@@ -33,3 +34,4 @@ pub use semantictoken::EmmyrcSemanticToken;
 pub use signature::EmmyrcSignature;
 pub use strict::EmmyrcStrict;
 pub use workspace::EmmyrcWorkspace;
+pub use kg_custom::KgCustom;

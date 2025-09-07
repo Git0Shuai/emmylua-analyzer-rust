@@ -4,7 +4,7 @@ use emmylua_parser::{
 };
 
 use crate::{
-    DbIndex, LuaDeclId, LuaDeclOrMemberId, LuaInferCache, LuaInstanceType, LuaMemberId,
+    DbIndex, FileId, LuaDeclId, LuaDeclOrMemberId, LuaInferCache, LuaInstanceType, LuaMemberId,
     LuaMemberKey, LuaMemberOwner, LuaSemanticDeclId, LuaType, LuaTypeCache, LuaTypeDeclId,
     LuaUnionType,
     semantic::{infer::find_self_decl_or_member_id, member::get_buildin_type_map_type_id},
@@ -251,6 +251,9 @@ fn infer_member_semantic_decl_by_member_key(
             semantic_guard.next_level()?,
         ),
         LuaType::Global => infer_global_member_semantic_decl_by_member_key(db, member_key),
+        LuaType::FileEnv(file_id) => {
+            infer_fenv_member_semantic_decl_by_member_key(db, file_id, member_key)
+        }
         _ => None,
     }
 }
@@ -370,4 +373,19 @@ fn infer_global_member_semantic_decl_by_member_key(
     db.get_global_index()
         .resolve_global_decl_id(db, name)
         .map(|decl_id| LuaSemanticDeclId::LuaDecl(decl_id))
+}
+
+fn infer_fenv_member_semantic_decl_by_member_key(
+    db: &DbIndex,
+    file_id: &FileId,
+    member_key: &LuaMemberKey,
+) -> Option<LuaSemanticDeclId> {
+    let name = member_key.get_name()?;
+    db.get_decl_index()
+        .get_decl_tree(file_id)
+        .map(|it| {
+            it.get_module_decl_by_name(name)
+                .map(|it| LuaSemanticDeclId::LuaDecl(it.get_id()))
+        })
+        .flatten()
 }

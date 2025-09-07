@@ -29,6 +29,9 @@ pub struct LuaModuleIndex {
     id_counter: u32,
     fuzzy_search: bool,
     module_replace_vec: Vec<(Regex, String)>,
+    workspace_module_prefix: Vec<(Regex, String)>,
+    default_kg_require: bool,
+    force_raw_require_patterns: Vec<Regex>,
 }
 
 impl LuaModuleIndex {
@@ -43,6 +46,9 @@ impl LuaModuleIndex {
             id_counter: 1,
             fuzzy_search: false,
             module_replace_vec: Vec::new(),
+            workspace_module_prefix: Vec::new(),
+            default_kg_require: false,
+            force_raw_require_patterns: vec![],
         };
 
         let root_node = ModuleNode::default();
@@ -92,6 +98,10 @@ impl LuaModuleIndex {
             "update module replace pattern: {:?}",
             self.module_replace_vec
         );
+    }
+
+    pub fn set_workspace_module_prefix(&mut self, prefixes: Vec<(Regex, String)>) {
+        self.workspace_module_prefix = prefixes
     }
 
     pub fn add_module_by_path(&mut self, file_id: FileId, path: &str) -> Option<WorkspaceId> {
@@ -179,6 +189,7 @@ impl LuaModuleIndex {
             workspace_id,
             semantic_id: None,
             is_meta: false,
+            is_kg_required: false,
         };
 
         self.file_module_map.insert(file_id, module_info);
@@ -307,19 +318,21 @@ impl LuaModuleIndex {
 
     pub fn extract_module_path(&self, path: &str) -> Option<(String, WorkspaceId)> {
         let path = Path::new(path);
-        let mut matched_module_path: Option<(String, WorkspaceId)> = None;
+        let mut matched_module_path_and_root: Option<(String, WorkspaceId, PathBuf)> = None;
         for workspace in &self.workspaces {
             if let Ok(relative_path) = path.strip_prefix(&workspace.root) {
                 let relative_path_str = relative_path.to_str().unwrap_or("");
                 let module_path = self.match_pattern(relative_path_str);
                 if let Some(module_path) = module_path {
-                    if matched_module_path.is_none() {
-                        matched_module_path = Some((module_path, workspace.id));
+                    if matched_module_path_and_root.is_none() {
+                        matched_module_path_and_root =
+                            Some((module_path, workspace.id, workspace.root.clone()));
                     } else {
-                        let (matched, matched_workspace_id) = match matched_module_path.as_ref() {
-                            Some((matched, id)) => (matched, id),
-                            None => continue,
-                        };
+                        let (matched, matched_workspace_id) =
+                            match matched_module_path_and_root.as_ref() {
+                                Some((matched, id, _)) => (matched, id),
+                                None => continue,
+                            };
                         if module_path.len() < matched.len() {
                             // Libraries could be in a subdirectory of the main workspace
                             // In case of a conflict, we prioritise the non-main workspace ID
@@ -328,14 +341,25 @@ impl LuaModuleIndex {
                             } else {
                                 workspace.id
                             };
-                            matched_module_path = Some((module_path, workspace_id));
+                            matched_module_path_and_root =
+                                Some((module_path, workspace_id, workspace.root.clone()));
                         }
                     }
                 }
             }
         }
 
-        matched_module_path
+        matched_module_path_and_root.map(|(path, workspace_id, root)| {
+            let root = root.to_owned();
+            for it in self.workspace_module_prefix.iter() {
+                if root.to_str().map(|root| it.0.is_match(root)).unwrap_or(false) {
+                    if let Some(path) = PathBuf::from(&it.1).join(&path).to_str().to_owned() {
+                        return (path.to_owned(), workspace_id);
+                    }
+                }
+            }
+            (path, workspace_id)
+        })
     }
 
     fn replace_module_path(&self, module_path: &str) -> String {
@@ -410,6 +434,25 @@ impl LuaModuleIndex {
                 .map(|m| (m.pattern.clone(), m.replace.clone()))
                 .collect(),
         );
+        self.set_workspace_module_prefix(
+            config
+                .workspace
+                .workspace_prefix_map
+                .iter()
+                .map(|it| {
+                    Regex::new(&it.path).map(|re| (re, it.prefix.clone()))
+                })
+                .flatten()
+                .collect(),
+        );
+
+        self.default_kg_require = config.kg_custom.default_kg_require;
+        self.force_raw_require_patterns.clear();
+        for it in config.kg_custom.force_raw_require_re.iter() {
+            if let Ok(re) = Regex::new(it) {
+                self.force_raw_require_patterns.push(re);
+            }
+        }
 
         self.fuzzy_search = !config.strict.require_path;
     }
@@ -483,6 +526,20 @@ impl LuaModuleIndex {
         }
 
         false
+    }
+
+    pub fn set_kg_required(&mut self, file_id: &FileId) {
+        if let Some(module_info) = self.file_module_map.get_mut(&file_id) {
+            module_info.is_kg_required = true;
+        }
+    }
+
+    pub fn is_kg_required(&self, file_id: &FileId) -> bool {
+        if let Some(module_info) = self.file_module_map.get(&file_id) {
+            self.default_kg_require && !self.force_raw_require_patterns.iter().any(|it| it.is_match(&module_info.full_module_name))
+        } else{
+            false
+        }
     }
 
     pub fn get_workspace_id(&self, file_id: FileId) -> Option<WorkspaceId> {

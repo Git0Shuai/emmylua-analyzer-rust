@@ -47,7 +47,11 @@ impl<'cache> ParserConfig<'cache> {
             "error" => SpecialFunction::Error,
             "assert" => SpecialFunction::Assert,
             "type" => SpecialFunction::Type,
-            "setmetatable" => SpecialFunction::Setmetaatable,
+            "setmetatable" => SpecialFunction::Setmetatable,
+            "kg_require" => SpecialFunction::KgRequire,
+            "DefineClass" => SpecialFunction::DefineClass,
+            "DefineComponent" => SpecialFunction::DefineComponent,
+            "DefineEntity" | "DefineSpace" => SpecialFunction::DefineEntity,
             _ => *self
                 .special_like
                 .get(name)
@@ -89,5 +93,10 @@ pub enum SpecialFunction {
     Error,
     Assert,
     Type,
-    Setmetaatable,
+    Setmetatable,
+    // C7 customize
+    KgRequire,
+    DefineClass,
+    DefineComponent,
+    DefineEntity,
 }

@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
 use super::{LuaDeclId, decl, scope};
-use crate::{FileId, db_index::LuaMemberId};
+use crate::{FileId, LocalAttribute, LuaDeclExtra, db_index::LuaMemberId};
 use decl::LuaDecl;
 use rowan::{TextRange, TextSize};
 use scope::{LuaScope, LuaScopeId, LuaScopeKind, ScopeOrDeclId};
+use smol_str::SmolStr;
 
 #[derive(Debug)]
 pub struct LuaDeclarationTree {
     file_id: FileId,
     decls: HashMap<LuaDeclId, LuaDecl>,
+    pub module_decls: HashMap<SmolStr, LuaDeclId>,
     scopes: Vec<LuaScope>,
 }
 
@@ -18,6 +20,7 @@ impl LuaDeclarationTree {
         Self {
             file_id,
             decls: HashMap::new(),
+            module_decls: HashMap::new(),
             scopes: Vec::new(),
         }
     }
@@ -219,7 +222,15 @@ impl LuaDeclarationTree {
 
     pub fn add_decl(&mut self, decl: LuaDecl) -> LuaDeclId {
         let decl_id = decl.get_id();
-        self.decls.insert(decl_id, decl);
+        self.decls.insert(decl_id, decl.clone());
+        if let LuaDeclExtra::Local {
+            kind: _,
+            attrib: Some(LocalAttribute::Module),
+        } = &decl.extra
+            && decl.is_local()
+        {
+            self.module_decls.insert(decl.get_name().into(), decl_id);
+        }
         decl_id
     }
 
@@ -230,6 +241,10 @@ impl LuaDeclarationTree {
 
     pub fn get_decl(&self, decl_id: &LuaDeclId) -> Option<&LuaDecl> {
         self.decls.get(&decl_id)
+    }
+
+    pub fn get_module_decl_by_name(&self, name: &str) -> Option<&LuaDecl> {
+        self.module_decls.get(name).and_then(|it| self.get_decl(it))
     }
 
     pub fn create_scope(&mut self, range: TextRange, kind: LuaScopeKind) -> LuaScopeId {
@@ -267,8 +282,8 @@ impl LuaDeclarationTree {
         self.scopes.get(scope_id.id as usize)
     }
 
-    pub fn get_decls(&self) -> &HashMap<LuaDeclId, LuaDecl> {
-        &self.decls
+    pub fn get_decls(&self) -> impl Iterator<Item = (&LuaDeclId, &LuaDecl)> {
+        self.decls.iter()
     }
 }
 

@@ -111,4 +111,5 @@ pub enum LocalAttribute {
     Const,
     Close,
     IterConst,
+    Module,
 }

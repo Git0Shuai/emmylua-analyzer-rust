@@ -316,12 +316,14 @@ impl<'a> SemanticModel<'a> {
 #[derive(Debug)]
 pub struct InferGuard {
     guard: HashSet<LuaTypeDeclId>,
+    module_guard: HashSet<(FileId, String)>
 }
 
 impl InferGuard {
     pub fn new() -> Self {
         Self {
             guard: HashSet::default(),
+            module_guard: HashSet::default(),
         }
     }
 
@@ -330,6 +332,13 @@ impl InferGuard {
             return Err(InferFailReason::RecursiveInfer);
         }
         self.guard.insert(type_id.clone());
+        Ok(())
+    }
+
+    pub fn check_module(&mut self, file_id: FileId, name: String) -> Result<(), InferFailReason> {
+        if !self.module_guard.insert((file_id, name)) {
+            return Err(InferFailReason::RecursiveInfer);
+        }
         Ok(())
     }
 }

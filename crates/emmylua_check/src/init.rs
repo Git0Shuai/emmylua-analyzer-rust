@@ -139,7 +139,7 @@ pub fn collect_files(
     ignore: Option<Vec<String>>,
 ) -> Vec<LuaFileInfo> {
     let mut files = Vec::new();
-    let (match_pattern, exclude, exclude_dir) = calculate_include_and_exclude(emmyrc, ignore);
+    let (match_pattern, exclude, exclude_dir, force_include_prefix) = calculate_include_and_exclude(emmyrc, ignore);
 
     let encoding = &emmyrc.workspace.encoding;
 
@@ -149,6 +149,7 @@ pub fn collect_files(
             &match_pattern,
             &exclude,
             &exclude_dir,
+            &force_include_prefix,
             Some(encoding),
         )
         .ok();
@@ -163,7 +164,7 @@ pub fn collect_files(
 pub fn calculate_include_and_exclude(
     emmyrc: &Emmyrc,
     ignore: Option<Vec<String>>,
-) -> (Vec<String>, Vec<String>, Vec<PathBuf>) {
+) -> (Vec<String>, Vec<String>, Vec<PathBuf>, Vec<String>) {
     let mut include = vec!["**/*.lua".to_string(), "**/.editorconfig".to_string()];
     let mut exclude = Vec::new();
     let mut exclude_dirs = Vec::new();
@@ -196,6 +197,10 @@ pub fn calculate_include_and_exclude(
         exclude_dirs.push(PathBuf::from(dir));
     }
 
+    let force_include_prefix = emmyrc
+        .workspace
+        .force_include_path_globs.clone();
+
     // remove duplicate
     include.sort();
     include.dedup();
@@ -204,5 +209,5 @@ pub fn calculate_include_and_exclude(
     exclude.sort();
     exclude.dedup();
 
-    (include, exclude, exclude_dirs)
+    (include, exclude, exclude_dirs, force_include_prefix)
 }

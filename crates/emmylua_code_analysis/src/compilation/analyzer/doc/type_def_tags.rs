@@ -66,6 +66,10 @@ fn add_description_for_type_decl(
     type_decl_id: &LuaTypeDeclId,
     descriptions: Vec<LuaDocDescription>,
 ) {
+    if descriptions.is_empty() {
+        return;
+    }
+
     let mut description_text = String::new();
 
     // let comment = analyzer.comment.clone();

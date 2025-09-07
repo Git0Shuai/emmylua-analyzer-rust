@@ -59,6 +59,7 @@ pub fn try_resolve_member(
                 LuaMemberOwner::Type(def_id)
             }
             LuaType::Instance(instance) => LuaMemberOwner::Element(instance.get_range().clone()),
+            LuaType::FileEnv(file_id) => LuaMemberOwner::FileEnv(file_id),
             // is ref need extend field?
             _ => {
                 return Ok(()); // Changed from return None to return Ok(())

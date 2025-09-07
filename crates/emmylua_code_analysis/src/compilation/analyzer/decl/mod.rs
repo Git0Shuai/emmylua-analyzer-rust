@@ -214,7 +214,7 @@ impl<'a> DeclAnalyzer<'a> {
         let id = self.decl.add_decl(decl);
         self.add_decl_to_current_scope(id);
 
-        if is_global {
+        if is_global && !self.db.get_module_index().is_kg_required(&file_id){
             self.db.get_global_index_mut().add_global_decl(&name, id);
 
             self.db

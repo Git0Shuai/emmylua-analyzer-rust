@@ -99,8 +99,23 @@ impl LineIndex {
         if self.is_line_only_ascii(line.try_into().unwrap()) {
             Some((line, usize::from(offset - start_offset)))
         } else {
-            let text = &source_text[usize::from(start_offset)..usize::from(offset)];
-            Some((line, text.chars().count()))
+            if start_offset == offset {
+                return Some((line, 0));
+            }
+            let mut start = start_offset.into();
+            let mut end = offset.into();
+            while start < end && !source_text.is_char_boundary(start) {
+                start += 1;
+            }
+            while start < end && !source_text.is_char_boundary(end) {
+                end -= 1;
+            }
+            if start < end {
+                let text = &source_text[usize::from(start)..usize::from(end)];
+                Some((line, text.chars().count()))
+            } else {
+                None
+            }
         }
     }
 

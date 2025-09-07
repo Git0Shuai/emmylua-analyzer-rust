@@ -1,5 +1,9 @@
 use std::str::FromStr;
 
+use crate::handlers::{
+    definition::goto_function::{find_function_call_origin, find_matching_function_definitions},
+    hover::{find_all_same_named_members, find_member_origin_owner},
+};
 use emmylua_code_analysis::{
     LuaCompilation, LuaDeclId, LuaMemberId, LuaMemberInfo, LuaMemberKey, LuaSemanticDeclId,
     LuaType, LuaTypeDeclId, SemanticDeclLevel, SemanticModel,
@@ -10,11 +14,6 @@ use emmylua_parser::{
 };
 use itertools::Itertools;
 use lsp_types::{GotoDefinitionResponse, Location, Position, Range, Uri};
-
-use crate::handlers::{
-    definition::goto_function::{find_function_call_origin, find_matching_function_definitions},
-    hover::{find_all_same_named_members, find_member_origin_owner},
-};
 
 pub fn goto_def_definition(
     semantic_model: &SemanticModel,
@@ -119,7 +118,60 @@ fn handle_member_definition(
             locations.into_iter().unique().collect(),
         ))
     } else {
-        None
+        let root = compilation
+            .get_db()
+            .get_vfs()
+            .get_syntax_tree(&member_id.file_id)?
+            .get_red_root();
+        let Some(member_syntax) = member_id.get_syntax_id().to_node_from_root(&root) else {
+            return None;
+        };
+        let Some(parent) = member_syntax.parent() else {
+            return None;
+        };
+        let Some(expr) = LuaIndexExpr::cast(parent) else {
+            return None;
+        };
+        if let Some(prefix_ty) = expr
+            .get_prefix_expr()
+            .map(|it| semantic_model.infer_expr(it).ok())
+            .flatten()
+        {
+            match prefix_ty {
+                LuaType::FileEnv(file_id) => {
+                    let Some(module_decls) = semantic_model
+                        .get_db()
+                        .get_decl_index()
+                        .get_decl_tree(&file_id)
+                        .map(|it| &it.module_decls)
+                    else {
+                        return None;
+                    };
+                    if module_decls.is_empty() {
+                        None
+                    } else {
+                        for location in module_decls
+                            .iter()
+                            .map(|it| get_decl_location(semantic_model, it.1))
+                            .flatten()
+                        {
+                            locations.push(location);
+                        }
+                        if locations.is_empty() {
+                            None
+                        } else {
+                            Some(GotoDefinitionResponse::Array(
+                                locations.into_iter().unique().collect(),
+                            ))
+                        }
+                    }
+                }
+                _ => None,
+            }
+        } else {
+            // TODO @heshuai
+            None
+        }
     }
 }
 

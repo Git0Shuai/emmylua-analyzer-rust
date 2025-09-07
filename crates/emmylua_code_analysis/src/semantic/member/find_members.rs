@@ -230,6 +230,17 @@ fn find_custom_type_members(
                 }
             }
         }
+        for comp in type_index.get_relative_comp_types(type_decl_id).iter().filter(|it| *it != type_decl_id) {
+            if let Some(super_members) =
+                find_members_guard(db, &LuaType::Ref(comp.clone()), infer_guard, filter)
+            {
+                members.extend(super_members);
+
+                if should_stop_collecting(members.len(), filter) {
+                    return Some(members);
+                }
+            }
+        }
     }
 
     Some(members)

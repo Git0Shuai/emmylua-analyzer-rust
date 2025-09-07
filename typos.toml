@@ -1,22 +1,23 @@
 [default]
 extend-ignore-re = [
-  # git commit hashes in CHANGELOG.md
-  "\\[[0-9a-f]{7}\\]",
-  # Line ignore with trailing # spellchecker:disable-line
-  "(?Rm)^.*(#|--|//)\\s*spellchecker:disable-line$",
-  # ignore typ in identifiers
-  "(?i)\\b(?:\\w*typ|typ_\\w*)\\b",
+    # git commit hashes in CHANGELOG.md
+    "\\[[0-9a-f]{7}\\]",
+    # Line ignore with trailing # spellchecker:disable-line
+    "(?Rm)^.*(#|--|//)\\s*spellchecker:disable-line$",
+    # ignore typ in identifiers
+    "(?i)\\b(?:\\w*typ|typ_\\w*)\\b",
 ]
 
 [default.extend-identifiers]
 typ = "typ"
+fenv = "fenv"
 
 [files]
 extend-exclude = [
-  "CHANGELOG.md",
-  "*.flake",
-  "*.yaml",
-  "vim_lexer.rs",
-  "shell_lexer.rs",
-  "sql_lexer.rs"
+    "CHANGELOG.md",
+    "*.flake",
+    "*.yaml",
+    "vim_lexer.rs",
+    "shell_lexer.rs",
+    "sql_lexer.rs",
 ]

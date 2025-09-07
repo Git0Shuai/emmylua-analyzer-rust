@@ -11,6 +11,7 @@ use super::traits::LuaIndex;
 use crate::{DbIndex, FileId, InFiled};
 pub use generic_param::GenericParam;
 pub use humanize_type::{RenderLevel, format_union_type, humanize_type};
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 pub use type_decl::{
     LuaDeclLocation, LuaDeclTypeKind, LuaTypeAttribute, LuaTypeDecl, LuaTypeDeclId,
@@ -30,6 +31,8 @@ pub struct LuaTypeIndex {
     supers: HashMap<LuaTypeDeclId, Vec<InFiled<LuaType>>>,
     types: HashMap<LuaTypeOwner, LuaTypeCache>,
     in_filed_type_owner: HashMap<FileId, HashSet<LuaTypeOwner>>,
+    components: HashMap<LuaTypeDeclId, HashSet<LuaTypeDeclId>>,
+    component_owners: HashMap<LuaTypeDeclId, HashSet<LuaTypeDeclId>>,
 }
 
 impl LuaTypeIndex {
@@ -43,6 +46,8 @@ impl LuaTypeIndex {
             supers: HashMap::new(),
             types: HashMap::new(),
             in_filed_type_owner: HashMap::new(),
+            components: HashMap::new(),
+            component_owners: HashMap::new(),
         }
     }
 
@@ -176,6 +181,51 @@ impl LuaTypeIndex {
             .entry(decl_id)
             .or_insert_with(Vec::new)
             .push(InFiled::new(file_id, super_type));
+    }
+
+    pub fn add_component_type(
+        &mut self,
+        entity_ty_decl_id: LuaTypeDeclId,
+        component_ty_decl_id: LuaTypeDeclId,
+    ) {
+        self.components
+            .entry(entity_ty_decl_id.clone())
+            .or_insert(HashSet::new())
+            .insert(component_ty_decl_id.clone());
+        self.component_owners
+            .entry(component_ty_decl_id)
+            .or_insert(HashSet::new())
+            .insert(entity_ty_decl_id);
+    }
+
+    pub fn get_relative_comp_types(&self, ty_decl_id: &LuaTypeDeclId) -> Vec<LuaTypeDeclId> {
+        if self.components.contains_key(&ty_decl_id) {
+            self.components
+                .get(&ty_decl_id)
+                .unwrap()
+                .iter()
+                .cloned()
+                .unique()
+                .collect_vec()
+        } else if self.component_owners.contains_key(&ty_decl_id) {
+            self.component_owners
+                .get(&ty_decl_id)
+                .unwrap()
+                .iter()
+                .flat_map(|owners| return self.components.get(owners).unwrap().iter())
+                .cloned()
+                .chain(
+                    self.component_owners
+                        .get(&ty_decl_id)
+                        .unwrap()
+                        .iter()
+                        .cloned(),
+                )
+                .unique()
+                .collect_vec()
+        } else {
+            vec![]
+        }
     }
 
     pub fn get_super_types(&self, decl_id: &LuaTypeDeclId) -> Option<Vec<LuaType>> {

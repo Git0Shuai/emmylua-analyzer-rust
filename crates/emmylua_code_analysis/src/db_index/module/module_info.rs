@@ -16,6 +16,7 @@ pub struct ModuleInfo {
     pub workspace_id: WorkspaceId,
     pub semantic_id: Option<LuaSemanticDeclId>,
     pub is_meta: bool,
+    pub is_kg_required: bool
 }
 
 impl ModuleInfo {

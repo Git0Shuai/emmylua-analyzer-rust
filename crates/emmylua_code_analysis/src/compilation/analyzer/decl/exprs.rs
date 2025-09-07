@@ -5,10 +5,7 @@ use emmylua_parser::{
 };
 
 use crate::{
-    FileId, InFiled, InferFailReason, LuaDeclExtra, LuaDeclId, LuaMemberFeature, LuaMemberId,
-    LuaSignatureId,
-    compilation::analyzer::unresolve::UnResolveTableField,
-    db_index::{LuaDecl, LuaMember, LuaMemberKey, LuaMemberOwner},
+    compilation::analyzer::{common::bind_type, unresolve::UnResolveTableField}, db_index::{LuaDecl, LuaMember, LuaMemberKey, LuaMemberOwner}, FileId, InFiled, InferFailReason, LocalAttribute, LuaDeclExtra, LuaDeclId, LuaMemberFeature, LuaMemberId, LuaSignatureId, LuaType, LuaTypeAttribute, LuaTypeCache, LuaTypeDecl, LuaTypeDeclId
 };
 
 use super::DeclAnalyzer;
@@ -20,8 +17,13 @@ pub fn analyze_name_expr(analyzer: &mut DeclAnalyzer, expr: LuaNameExpr) -> Opti
     let range = name_token.get_range();
     let file_id = analyzer.get_file_id();
     let decl_id = LuaDeclId::new(file_id, position);
-    let (decl_id, is_local) = if analyzer.decl.get_decl(&decl_id).is_some() {
-        (Some(decl_id), false)
+    let (decl_id, is_local) = if let Some(decl) = analyzer.decl.get_decl(&decl_id) {
+        if decl.is_local() {
+            // 由于 kg_require 的影响被视作 local 声明的赋值语句
+            (None, true)
+        } else {
+            (Some(decl_id), false)
+        }
     } else if let Some(decl) = analyzer.find_decl(&name, position) {
         if decl.is_local() {
             // reference local variable
@@ -324,7 +326,7 @@ pub fn analyze_literal_expr(analyzer: &mut DeclAnalyzer, expr: LuaLiteralExpr) -
 }
 
 pub fn analyze_call_expr(analyzer: &mut DeclAnalyzer, expr: LuaCallExpr) -> Option<()> {
-    if expr.is_require() {
+    if expr.is_require() || expr.is_kg_require() {
         let args = expr.get_args_list()?;
         if let Some(LuaExpr::LiteralExpr(literal_expr)) = args.get_args().next() {
             if let Some(LuaLiteralToken::String(string_token)) = literal_expr.get_literal() {
@@ -336,6 +338,47 @@ pub fn analyze_call_expr(analyzer: &mut DeclAnalyzer, expr: LuaCallExpr) -> Opti
                     .db
                     .get_file_dependencies_index_mut()
                     .add_required_file(file_id, module_file_id);
+            }
+        }
+    } else if expr.is_define_class() || expr.is_define_entity() {
+        let args = expr.get_args_list()?;
+        let mut args_iter = args.get_args();
+        if let Some(LuaExpr::LiteralExpr(literal_expr)) = args_iter.next() {
+            if let Some(LuaLiteralToken::String(string_token)) = literal_expr.get_literal() {
+                let class_name = string_token.get_value();
+                let file_id = analyzer.get_file_id();
+                let lua_decl = LuaDecl::new(
+                    &class_name,
+                    file_id,
+                    string_token.get_range(),
+                    LuaDeclExtra::Local {
+                        kind: string_token.syntax().kind(),
+                        attrib: Some(LocalAttribute::Module)
+                    },
+                    Some(expr.get_syntax_id()),
+                );
+                let lua_decl_id = lua_decl.get_id();
+                analyzer.add_decl(lua_decl);
+
+                let type_decl = LuaTypeDecl::new(
+                    file_id,
+                    string_token.get_range(),
+                    class_name.to_string(),
+                    crate::LuaDeclTypeKind::Class,
+                    LuaTypeAttribute::None.into(),
+                    LuaTypeDeclId::new(&class_name),
+                );
+                let type_decl_id = type_decl.get_id();
+                analyzer
+                    .db
+                    .get_type_index_mut()
+                    .add_type_decl(file_id, type_decl);
+
+                bind_type(
+                    analyzer.db,
+                    lua_decl_id.into(),
+                    LuaTypeCache::DocType(LuaType::Def(type_decl_id.clone())),
+                );
             }
         }
     }

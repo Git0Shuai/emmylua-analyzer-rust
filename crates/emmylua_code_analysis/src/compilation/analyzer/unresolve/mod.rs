@@ -56,7 +56,7 @@ impl AnalysisPipeline for UnResolveAnalysisPipeline {
 
             resolve_all_reason(db, &mut reason_resolve, loop_count);
 
-            if loop_count >= 5 {
+            if loop_count >= 10 {
                 break;
             }
             loop_count += 1;

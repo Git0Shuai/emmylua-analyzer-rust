@@ -18,8 +18,11 @@ pub fn analyze(db: &mut DbIndex, need_analyzed_files: Vec<InFiled<LuaChunk>>, co
         return;
     }
 
-    let contexts = module_analyze(db, need_analyzed_files, config);
+    let mut contexts = module_analyze(db, need_analyzed_files, config);
 
+    for (_, context) in &mut contexts {
+        run_analysis::<KgRequireMarkPipeline>(db, context);
+    }
     for (workspace_id, mut context) in contexts {
         let profile_log = format!("analyze workspace {}", workspace_id);
         let _p = Profile::cond_new(&profile_log, context.tree_list.len() > 1);
@@ -28,6 +31,44 @@ pub fn analyze(db: &mut DbIndex, need_analyzed_files: Vec<InFiled<LuaChunk>>, co
         run_analysis::<flow::FlowAnalysisPipeline>(db, &mut context);
         run_analysis::<lua::LuaAnalysisPipeline>(db, &mut context);
         run_analysis::<unresolve::UnResolveAnalysisPipeline>(db, &mut context);
+    }
+}
+
+struct KgRequireMarkPipeline;
+
+impl AnalysisPipeline for KgRequireMarkPipeline {
+    fn analyze(_db: &mut DbIndex, _context: &mut AnalyzeContext) {
+        // 根据 kg_require 调用分析模块执行上下文是否为自定义 fenv
+        // for tree in context.tree_list.iter() {
+        //     for walk_event in tree.value.walk_descendants::<LuaAst>() {
+        //         match walk_event {
+        //             rowan::WalkEvent::Enter(node) => {
+        //                 if let LuaAst::LuaCallExpr(call_expr) = node
+        //                     && (call_expr.is_kg_require())
+        //                 {
+        //                     if let Some(args) = call_expr.get_args_list() {
+        //                         if let Some(LuaExpr::LiteralExpr(module_path_expr)) =
+        //                             args.get_args().next()
+        //                         {
+        //                             if let Some(LuaLiteralToken::String(literal_str_token)) =
+        //                                 module_path_expr.get_literal()
+        //                             {
+        //                                 if let Some(required_module_info) = db
+        //                                     .get_module_index()
+        //                                     .find_module(&literal_str_token.get_value())
+        //                                 {
+        //                                     let file_id = required_module_info.file_id;
+        //                                     db.get_module_index_mut().set_kg_required(&file_id);
+        //                                 }
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //             _ => {}
+        //         }
+        //     }
+        // }
     }
 }
 

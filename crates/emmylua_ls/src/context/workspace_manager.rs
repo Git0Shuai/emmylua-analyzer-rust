@@ -355,17 +355,24 @@ pub struct WorkspaceFileMatcher {
     include: Vec<String>,
     exclude: Vec<String>,
     exclude_dir: Vec<PathBuf>,
+    force_include_globs: Vec<String>,
 }
 
 impl WorkspaceFileMatcher {
-    pub fn new(include: Vec<String>, exclude: Vec<String>, exclude_dir: Vec<PathBuf>) -> Self {
+    pub fn new(include: Vec<String>, exclude: Vec<String>, exclude_dir: Vec<PathBuf>, force_include_globs: Vec<String>) -> Self {
         Self {
             include,
             exclude,
             exclude_dir,
+            force_include_globs,
         }
     }
     pub fn is_match(&self, path: &Path, relative_path: &Path) -> bool {
+        let force_include = wax::any(self.force_include_globs.iter().map(|s| s.as_str()));
+        if let Ok(force_include) = force_include && force_include.is_match(relative_path) {
+            return true;
+        }
+
         if self.exclude_dir.iter().any(|dir| path.starts_with(dir)) {
             return false;
         }
@@ -394,6 +401,6 @@ impl WorkspaceFileMatcher {
 impl Default for WorkspaceFileMatcher {
     fn default() -> Self {
         let include_pattern = vec!["**/*.lua".to_string()];
-        Self::new(include_pattern, vec![], vec![])
+        Self::new(include_pattern, vec![], vec![], vec![])
     }
 }

@@ -22,7 +22,7 @@ impl Checker for UnusedChecker {
 
         let root = semantic_model.get_root();
         let ref_index = semantic_model.get_db().get_reference_index();
-        for (_, decl) in decl_tree.get_decls().iter() {
+        for (_, decl) in decl_tree.get_decls() {
             if decl.is_global() {
                 continue;
             } else if decl.is_param() && decl.get_name() == "..." {

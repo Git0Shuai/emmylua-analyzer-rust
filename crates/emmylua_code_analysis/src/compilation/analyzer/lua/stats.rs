@@ -256,13 +256,11 @@ pub fn analyze_assign_stat(analyzer: &mut LuaAnalyzer, assign_stat: LuaAssignSta
     let var_count = var_list.len();
     for i in 0..expr_count {
         let var = var_list.get(i)?;
-        let expr = expr_list.get(i);
-        if expr.is_none() {
-            break;
-        }
-        let expr = expr?;
+        let expr = expr_list.get(i)?;
         let type_owner = get_var_owner(analyzer, var.clone());
-        set_index_expr_owner(analyzer, var.clone());
+        if let LuaTypeOwner::Member(_) = &type_owner {
+            set_index_expr_owner(analyzer, var.clone());
+        }
 
         match special_assign_pattern(analyzer, type_owner.clone(), var.clone(), expr.clone()) {
             Some(_) => {

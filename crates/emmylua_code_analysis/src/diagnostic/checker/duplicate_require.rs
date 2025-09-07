@@ -14,7 +14,7 @@ impl Checker for DuplicateRequireChecker {
         let root = semantic_model.get_root().clone();
         let mut require_calls = Vec::new();
         for call_expr in root.descendants::<LuaCallExpr>() {
-            if call_expr.is_require() {
+            if call_expr.is_require() || call_expr.is_kg_require() {
                 check_require_call_expr(context, semantic_model, call_expr, &mut require_calls);
             }
         }

@@ -220,7 +220,7 @@ impl From<EmmyrcSpecialSymbol> for Option<SpecialFunction> {
             EmmyrcSpecialSymbol::Error => Some(SpecialFunction::Error),
             EmmyrcSpecialSymbol::Assert => Some(SpecialFunction::Assert),
             EmmyrcSpecialSymbol::Type => Some(SpecialFunction::Type),
-            EmmyrcSpecialSymbol::Setmetatable => Some(SpecialFunction::Setmetaatable),
+            EmmyrcSpecialSymbol::Setmetatable => Some(SpecialFunction::Setmetatable),
         }
     }
 }
